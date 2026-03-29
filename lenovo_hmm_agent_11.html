@@ -1,0 +1,638 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lenovo HMM Agent</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0d0f;
+    --surface: #141417;
+    --border: #2a2a30;
+    --accent: #e8291c;
+    --accent2: #ff6b35;
+    --text: #e8e8ec;
+    --muted: #6b6b78;
+    --user-bg: #1a1a20;
+    --bot-bg: #141417;
+    --mono: 'IBM Plex Mono', monospace;
+    --sans: 'IBM Plex Sans', sans-serif;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    height: 100vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    flex-shrink: 0;
+  }
+
+  .logo {
+    width: 36px; height: 36px;
+    background: var(--accent);
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-weight: 600;
+    font-size: 13px;
+    color: white;
+    letter-spacing: -0.5px;
+  }
+
+  .header-text h1 {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    color: var(--text);
+  }
+
+  .header-text p {
+    font-size: 11px;
+    color: var(--muted);
+    margin-top: 2px;
+    font-family: var(--mono);
+  }
+
+  .status-dot {
+    width: 7px; height: 7px;
+    background: #22c55e;
+    border-radius: 50%;
+    margin-left: auto;
+    box-shadow: 0 0 8px #22c55e88;
+    animation: pulse 2s infinite;
+  }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+
+  #chat {
+    flex: 1;
+    overflow-y: auto;
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+  }
+
+  .msg {
+    display: flex;
+    gap: 12px;
+    max-width: 820px;
+    width: 100%;
+    animation: fadeIn 0.2s ease;
+  }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+
+  .msg.user { align-self: flex-end; flex-direction: row-reverse; }
+
+  .avatar {
+    width: 30px; height: 30px;
+    border-radius: 4px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 600;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .msg.user .avatar { background: #1e3a5f; color: #60a5fa; }
+  .msg.bot .avatar { background: #2a1a1a; color: var(--accent); }
+
+  .bubble {
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    line-height: 1.65;
+    max-width: calc(100% - 42px);
+    border: 1px solid transparent;
+  }
+
+  .msg.user .bubble {
+    background: var(--user-bg);
+    border-color: #2a2a35;
+    color: var(--text);
+  }
+
+  .msg.bot .bubble {
+    background: var(--bot-bg);
+    border-color: var(--border);
+    color: var(--text);
+  }
+
+  .bubble code {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: #1e1e24;
+    padding: 2px 6px;
+    border-radius: 3px;
+    color: var(--accent2);
+  }
+
+  .bubble pre {
+    font-family: var(--mono);
+    font-size: 12px;
+    background: #1a1a20;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 12px;
+    margin: 8px 0;
+    overflow-x: auto;
+    white-space: pre-wrap;
+    line-height: 1.6;
+  }
+
+  .bubble ul, .bubble ol {
+    padding-left: 20px;
+    margin: 6px 0;
+  }
+
+  .bubble li { margin: 4px 0; }
+
+  .bubble a {
+    color: var(--accent2);
+    text-decoration: none;
+    border-bottom: 1px solid var(--accent2);
+    padding-bottom: 1px;
+  }
+
+  .bubble a:hover { opacity: 0.8; }
+
+  .bubble .step-label {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    margin-bottom: 4px;
+  }
+
+  .tag {
+    display: inline-block;
+    font-family: var(--mono);
+    font-size: 11px;
+    padding: 2px 8px;
+    border-radius: 3px;
+    margin: 2px 3px 2px 0;
+  }
+  .tag.page { background: #1e2d1e; color: #4ade80; border: 1px solid #2d4a2d; }
+  .tag.type { background: #1e1e2d; color: #818cf8; border: 1px solid #2d2d4a; }
+  .tag.warning { background: #2d1e1e; color: #f87171; border: 1px solid #4a2d2d; }
+
+  .thinking {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: var(--muted);
+  }
+
+  .dots span {
+    display: inline-block;
+    width: 5px; height: 5px;
+    background: var(--muted);
+    border-radius: 50%;
+    animation: bounce 1.2s infinite;
+  }
+  .dots span:nth-child(2) { animation-delay: 0.2s; }
+  .dots span:nth-child(3) { animation-delay: 0.4s; }
+
+  @keyframes bounce {
+    0%, 80%, 100% { transform: translateY(0); }
+    40% { transform: translateY(-5px); }
+  }
+
+  footer {
+    border-top: 1px solid var(--border);
+    padding: 16px 24px;
+    flex-shrink: 0;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 10px;
+    align-items: flex-end;
+  }
+
+  #input {
+    flex: 1;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-family: var(--sans);
+    font-size: 14px;
+    color: var(--text);
+    outline: none;
+    resize: none;
+    min-height: 42px;
+    max-height: 120px;
+    transition: border-color 0.15s;
+    line-height: 1.5;
+  }
+
+  #input:focus { border-color: var(--accent); }
+  #input::placeholder { color: var(--muted); }
+
+  #sendBtn {
+    background: var(--accent);
+    border: none;
+    border-radius: 6px;
+    width: 42px; height: 42px;
+    cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.15s, transform 0.1s;
+    flex-shrink: 0;
+  }
+
+  #sendBtn:hover { background: #c41f14; }
+  #sendBtn:active { transform: scale(0.95); }
+
+  #sendBtn svg { width: 16px; height: 16px; fill: white; }
+
+  .hint {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--muted);
+    margin-top: 8px;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">LNV</div>
+  <div class="header-text">
+    <h1>LENOVO HMM AGENT</h1>
+    <p>Hardware Maintenance Manual · AI-avustettu</p>
+  </div>
+  <div class="status-dot"></div>
+</header>
+
+<div id="chat"></div>
+
+<footer>
+  <div class="input-row">
+    <textarea id="input" placeholder="Kirjoita tyyppinumero (esim. 20QF) tai viesti..." rows="1"></textarea>
+    <button id="sendBtn">
+      <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+    </button>
+  </div>
+  <div class="hint">Enter lähettää · Shift+Enter rivinvaihto</div>
+</footer>
+
+
+<!-- API KEY MODAL -->
+<div id="apiModal" style="position:fixed;inset:0;background:#000000cc;display:flex;align-items:center;justify-content:center;z-index:1000;">
+  <div style="background:#141417;border:1px solid #2a2a30;border-radius:8px;padding:32px;max-width:440px;width:90%;font-family:'IBM Plex Sans',sans-serif;">
+    <div style="font-family:'IBM Plex Mono',monospace;font-size:11px;color:#6b6b78;letter-spacing:.08em;margin-bottom:12px;">ASETUKSET</div>
+    <div style="font-size:16px;font-weight:600;color:#e8e8ec;margin-bottom:8px;">Anthropic API-avain</div>
+    <div style="font-size:13px;color:#6b6b78;margin-bottom:20px;line-height:1.5;">
+      Avain tallennetaan vain selaimen muistiin — ei lähde minnekään.<br><br>
+      Hanki avain: <a href="https://console.anthropic.com/keys" target="_blank" style="color:#ff6b35;">console.anthropic.com/keys</a>
+    </div>
+    <input id="apiKeyInput" type="password" placeholder="sk-ant-api03-..."
+      style="width:100%;background:#0d0d0f;border:1px solid #2a2a30;border-radius:6px;padding:10px 14px;font-family:'IBM Plex Mono',monospace;font-size:13px;color:#e8e8ec;outline:none;box-sizing:border-box;margin-bottom:8px;">
+    <div id="apiError" style="color:#f87171;font-size:12px;min-height:18px;margin-bottom:12px;"></div>
+    <button id="apiSaveBtn" style="width:100%;background:#e8291c;border:none;border-radius:6px;padding:11px;color:white;font-family:'IBM Plex Mono',monospace;font-size:13px;font-weight:600;cursor:pointer;">ALOITA</button>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  // Detect if running inside iframe (e.g. Claude.ai artifact panel)
+  if (window.self !== window.top) {
+    const banner = document.createElement('div');
+    banner.innerHTML = `<div style="background:#7c2d12;border:1px solid #f87171;border-radius:6px;padding:12px 16px;margin:12px;font-family:'IBM Plex Mono',monospace;font-size:12px;color:#fecaca;line-height:1.6;">
+      ⚠ <strong>Avaa tiedosto selaimessa</strong> — Claude.ai estää API-kutsut.<br>
+      Lataa <strong>lenovo_hmm_agent.html</strong> koneellesi ja avaa se suoraan Safarissa tai Chromessa.
+    </div>`;
+    document.getElementById('chat').prepend(banner.firstElementChild);
+    document.getElementById('apiModal').style.display = 'none';
+    return;
+  }
+let API_KEY = '';
+
+// ── API key modal ──────────────────────────────────────────────────────────
+document.getElementById('apiSaveBtn').addEventListener('click', async () => {
+  const key = document.getElementById('apiKeyInput').value.trim();
+  const err = document.getElementById('apiError');
+  if (!key.startsWith('sk-ant-')) {
+    err.textContent = 'Avain näyttää virheelliseltä (pitää alkaa sk-ant-)';
+    return;
+  }
+  err.textContent = 'Testataan avainta...';
+  try {
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-allow-browser': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 10,
+        messages: [{ role: 'user', content: 'hi' }]
+      })
+    });
+    if (r.status === 200 || r.status === 201) {
+      API_KEY = key;
+      document.getElementById('apiModal').style.display = 'none';
+    } else {
+      const d = await r.json();
+      err.textContent = `Virhe: ${d.error?.message || r.status}`;
+    }
+  } catch(e) {
+    err.textContent = `Yhteysongelma: ${e.message}`;
+  }
+});
+document.getElementById('apiKeyInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('apiSaveBtn').click();
+});
+
+// ── Core ───────────────────────────────────────────────────────────────────
+const chat    = document.getElementById('chat');
+const input   = document.getElementById('input');
+const sendBtn = document.getElementById('sendBtn');
+
+let state = 'awaiting_type';
+let currentType = '';
+let pdfUrl = '';
+let conversationHistory = [];
+
+function apiCall(payload) {
+  return fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-allow-browser': 'true'
+    },
+    body: JSON.stringify(payload)
+  }).then(r => r.json());
+}
+
+// ── Part dictionary ────────────────────────────────────────────────────────
+const PART_DICT = [
+  { terms: ['akku','batteri','battery','bat'],                                          en: 'battery',                    fi: 'Akku' },
+  { terms: ['näyttö','screen','display','lcd','näyttöpaneeli','paneli'],                en: 'display / LCD panel',        fi: 'Näyttö' },
+  { terms: ['näppäimistö','keyboard','kb','näppis'],                                   en: 'keyboard',                   fi: 'Näppäimistö' },
+  { terms: ['ssd','kovalevy','kiintolevy','hdd','nvme','m.2','levy'],                  en: 'SSD / storage drive',        fi: 'SSD/HDD' },
+  { terms: ['ram','muisti','memory','dimm','so-dimm','muistikortti'],                  en: 'memory / RAM',               fi: 'RAM-muisti' },
+  { terms: ['tuuletin','fan','viuhka','cpu fan','cooling fan'],                        en: 'fan / cooling fan',          fi: 'Tuuletin' },
+  { terms: ['heatsink','jäähdytin','jäähdytys','cooling','heat sink','lämpölevy'],     en: 'heatsink / thermal module',  fi: 'Jäähdytin' },
+  { terms: ['emo','emolevy','motherboard','mainboard','mb','mobo','piirilevy'],        en: 'motherboard / system board', fi: 'Emolevy' },
+  { terms: ['wifi','wlan','wireless','verkkokortti','wifikortti','wlan card'],         en: 'wireless LAN card',          fi: 'WLAN-kortti' },
+  { terms: ['kamera','camera','webcam','web camera','verkkokamera'],                   en: 'camera / webcam',            fi: 'Kamera' },
+  { terms: ['kaiutin','speaker','kaiuttimet','äänentoisto'],                           en: 'speakers',                   fi: 'Kaiuttimet' },
+  { terms: ['mikrofoni','mikki','microphone','mic'],                                   en: 'microphone',                 fi: 'Mikrofoni' },
+  { terms: ['trackpad','touchpad','hiiri','ohjauslevy'],                               en: 'trackpad / touchpad',        fi: 'Ohjauslevy' },
+  { terms: ['kansi','takakansi','back cover','bottom cover','pohja','alakansi','base cover'], en: 'base cover / bottom case', fi: 'Pohjakansi' },
+  { terms: ['näyttökansi','lcd cover','top cover','yläkansi','display cover'],         en: 'LCD cover / display back cover', fi: 'Näyttökansi' },
+  { terms: ['sarana','hinge','hinges','saranat'],                                      en: 'hinge(s)',                   fi: 'Saranat' },
+  { terms: ['dc jack','virtaliitin','power jack','laturi liitin','virtapistoke'],      en: 'DC-in cable / power connector', fi: 'Virtaliitin' },
+  { terms: ['cmos','cmos-paristo','bios battery','rtc battery','nappiparisto'],        en: 'CMOS / RTC battery',         fi: 'CMOS-paristo' },
+  { terms: ['usb','usb-portti','usb port','usb board'],                                en: 'USB board / USB port',       fi: 'USB-portti' },
+  { terms: ['i/o','io board','i/o board','liitinlevy'],                                en: 'I/O board',                  fi: 'I/O-levy' },
+  { terms: ['thermal paste','lämpötahna','tahna','pasta'],                             en: 'thermal paste',              fi: 'Lämpötahna' },
+];
+
+function parsePartInput(text) {
+  const t = text.trim();
+  // FRU/osanumero: strip leading 00, rest must be 8-14 alphanum with both letters and digits
+  const partNoMatch = t.match(/^(?:00)?([0-9A-Z]{8,14})$/i);
+  if (partNoMatch && /\d/.test(partNoMatch[1]) && /[A-Z]/i.test(partNoMatch[1])) {
+    const clean = partNoMatch[1].toUpperCase();
+    return { display: t.toUpperCase(), query: `Lenovo FRU part number ${clean} replacement`, isFRU: true, fru: clean };
+  }
+  const lower = t.toLowerCase();
+  for (const entry of PART_DICT) {
+    if (entry.terms.some(term => lower.includes(term))) {
+      return { display: `${entry.fi} (${entry.en})`, query: entry.en, isFRU: false };
+    }
+  }
+  return { display: t, query: t, isFRU: false };
+}
+
+function parseLenovoInput(text) {
+  const t = text.trim();
+  const fullMatch = t.match(/^([A-Z0-9]{4})-?([A-Z0-9]{4,})\s*$/i);
+  if (fullMatch) {
+    const mt = fullMatch[1].toUpperCase(), model = fullMatch[2].toUpperCase();
+    return { display: `${mt}-${model}`, query: `${mt} ${mt}-${model}` };
+  }
+  const mtOnly = t.match(/^([A-Z0-9]{4})\s*$/i);
+  if (mtOnly && /[A-Z]/i.test(mtOnly[1]) && /[0-9]/.test(mtOnly[1])) {
+    return { display: mtOnly[1].toUpperCase(), query: mtOnly[1].toUpperCase() };
+  }
+  const modelName = t.match(/^(ThinkPad|IdeaPad|ThinkBook|ThinkCentre|ThinkStation|Legion|Yoga)\b.*/i);
+  if (modelName) return { display: t, query: `Lenovo ${t} HMM` };
+  const seriesInText = t.match(/(ThinkPad|IdeaPad|ThinkBook|Legion|Yoga)\s+[\w\s]+/i);
+  if (seriesInText) return { display: seriesInText[0].trim(), query: `Lenovo ${seriesInText[0].trim()} HMM` };
+  const mtInText = t.match(/\b([A-Z]{2}[0-9]{2}|[0-9]{2}[A-Z]{2})\b/i);
+  if (mtInText) return { display: mtInText[1].toUpperCase(), query: mtInText[1].toUpperCase() };
+  return null;
+}
+
+// ── UI helpers ─────────────────────────────────────────────────────────────
+function addMsg(role, html, isHtml = false) {
+  const div = document.createElement('div');
+  div.className = `msg ${role}`;
+  const av = document.createElement('div'); av.className = 'avatar';
+  av.textContent = role === 'user' ? 'SU' : 'AI';
+  const bubble = document.createElement('div'); bubble.className = 'bubble';
+  if (isHtml) bubble.innerHTML = html; else bubble.textContent = html;
+  div.appendChild(av); div.appendChild(bubble);
+  chat.appendChild(div); chat.scrollTop = chat.scrollHeight;
+  return bubble;
+}
+
+function addThinking(label) {
+  removeThinking();
+  const div = document.createElement('div');
+  div.className = 'msg bot'; div.id = 'thinking';
+  const av = document.createElement('div'); av.className = 'avatar'; av.textContent = 'AI';
+  const bubble = document.createElement('div'); bubble.className = 'bubble';
+  bubble.innerHTML = `<div class="thinking"><span>${label||'Haetaan...'}</span><div class="dots"><span></span><span></span><span></span></div></div>`;
+  div.appendChild(av); div.appendChild(bubble);
+  chat.appendChild(div); chat.scrollTop = chat.scrollHeight;
+}
+function removeThinking() { const t = document.getElementById('thinking'); if (t) t.remove(); }
+
+function formatResponse(text) {
+  let html = text
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/^### (.*)/gm, '<div class="step-label">$1</div>')
+    .replace(/\n\n/g, '</p><p>')
+    .replace(/^(\d+\.) /gm, '<br><strong>$1</strong> ')
+    .replace(/^- /gm, '<br>• ');
+  html = html.replace(/sivu[lt]? (\d+[-–]\d+|\d+)/gi, (m,p) => `${m.replace(p,'')} <span class="tag page">s. ${p}</span>`);
+  html = html.replace(/(VAROITUS|HUOM|TÄRKEÄÄ|WARNING|CAUTION):/gi, '<span class="tag warning">⚠ $1</span>');
+  return `<p>${html}</p>`;
+}
+
+// ── Search: two-step (search → parse) ─────────────────────────────────────
+async function searchLenovoHMM(typeQuery) {
+  addThinking('Haetaan laitteen tiedot...');
+  try {
+    const r = await apiCall({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 600,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      system: 'You are a Lenovo support specialist. Search for Lenovo HMM info and reply ONLY with a JSON object, no other text.',
+      messages: [{ role: 'user', content:
+        `Search for the Lenovo Hardware Maintenance Manual for: ${typeQuery}
+Search: "Lenovo ${typeQuery} hardware maintenance manual" and "site:support.lenovo.com ${typeQuery} HMM"
+Reply ONLY with this JSON (no markdown, no explanation):
+{"found":true,"model_name":"","pdf_url":"","support_url":"","series":"","description":""}
+found=true if any HMM/support page found. pdf_url=direct PDF link or "".` }]
+    });
+    removeThinking();
+    const text = r.content.map(i => i.text||'').filter(Boolean).join('');
+    const m = text.replace(/```json|```/g,'').match(/\{[\s\S]*?\}/);
+    if (m) return JSON.parse(m[0]);
+    return { found: false };
+  } catch(e) { removeThinking(); return { found: false }; }
+}
+
+async function getRepairInstructions(typeNumber, partQuery, partDisplay, isFRU, fru, deviceInfo) {
+  // If FRU: resolve component name + get instructions in one call
+  let resolvedPart = partQuery;
+
+  if (isFRU) {
+    addThinking('Tunnistetaan FRU-numero...');
+    try {
+      const r = await apiCall({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 200,
+        tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+        system: 'Identify Lenovo FRU part numbers. Reply with ONLY the English component name (e.g. "keyboard", "battery", "heatsink", "LCD panel", "system board", "fan"). If unknown, reply: unknown',
+        messages: [{ role: 'user', content: `What component is Lenovo FRU ${fru} for ${typeNumber} ${deviceInfo.model_name||''}? Search "Lenovo FRU ${fru}" or "Lenovo part ${fru}". Reply with ONLY the component name.` }]
+      });
+      removeThinking();
+      const raw = r.content.map(i=>i.text||'').join('').trim().toLowerCase().split('\n')[0].trim();
+      if (raw && raw !== 'unknown' && raw.length < 60) {
+        resolvedPart = raw;
+        addMsg('bot', `<span class="tag type">FRU ${fru}</span> → <strong>${raw}</strong>`, true);
+      } else {
+        addMsg('bot', `<span class="tag warning">⚠</span> FRU <code>${fru}</code> ei tunnistettu — haetaan silti ohjeet`, true);
+      }
+    } catch(e) { removeThinking(); }
+  }
+
+  addThinking('Haetaan huolto-ohjeet...');
+  const ctx = [
+    `Device: ${typeNumber} ${deviceInfo.model_name||''} ${deviceInfo.series?'('+deviceInfo.series+')':''}`,
+    deviceInfo.pdf_url    ? `HMM PDF: ${deviceInfo.pdf_url}` : '',
+    deviceInfo.support_url? `Support: ${deviceInfo.support_url}` : ''
+  ].filter(Boolean).join('\n');
+
+  const ask = `${ctx}\nReplace: ${resolvedPart}${isFRU?' (FRU: '+fru+')':''}\nIn Finnish: 1) removal order (numbered list) 2) HMM page numbers 3) tools 4) warnings. Be concise.`;
+  const messages = [...conversationHistory, { role: 'user', content: ask }];
+
+  try {
+    const r = await apiCall({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      tools: [{ type: 'web_search_20250305', name: 'web_search' }],
+      system: 'Certified Lenovo HMM technician. Search for repair procedures. Reply in Finnish. Be concise and precise about page numbers and removal order.',
+      messages
+    });
+    removeThinking();
+    const text = r.content.map(i=>i.text||'').filter(Boolean).join('\n');
+    conversationHistory.push({ role:'user', content: ask }, { role:'assistant', content: text });
+    return text;
+  } catch(e) { removeThinking(); return `Virhe: ${e.message}`; }
+}
+
+async function handleMessage(text) {
+  if (!text.trim()) return;
+  addMsg('user', text);
+  input.value = ''; input.style.height = 'auto';
+
+  if (state === 'awaiting_type') {
+    const parsed = parseLenovoInput(text);
+    if (parsed) {
+      currentType = parsed.display;
+      const deviceInfo = await searchLenovoHMM(parsed.query);
+      window._deviceInfo = deviceInfo;
+      let html = '';
+      if (!deviceInfo.found) {
+        html = `<strong>Laitetta <code>${currentType}</code> ei löydetty automaattisesti.</strong><br><br>
+          🔗 <a href="https://support.lenovo.com/us/en/solutions/ht505031" target="_blank">Etsi HMM manuaalisesti</a><br><br>
+          Kerro silti mikä osa vaihdetaan — yritän auttaa.`;
+      } else {
+        html = `<div class="step-label">Laite tunnistettu</div><strong>${deviceInfo.model_name||currentType}</strong>`;
+        if (deviceInfo.series) html += ` <span class="tag type">${deviceInfo.series}</span>`;
+        if (deviceInfo.description) html += `<br><small style="color:var(--muted)">${deviceInfo.description}</small>`;
+        if (deviceInfo.pdf_url) { pdfUrl = deviceInfo.pdf_url; html += `<br><br>📄 <a href="${deviceInfo.pdf_url}" target="_blank">Avaa HMM PDF</a>`; }
+        else if (deviceInfo.support_url) html += `<br><br>🔗 <a href="${deviceInfo.support_url}" target="_blank">Tukisivu</a>`;
+        html += `<br><br><strong>Mikä osa vaihdetaan?</strong><br><small style="color:var(--muted)">Osan nimi (akku, heatsink, emo...), FRU-numero (005M21C42009) tai englanniksi.</small>`;
+      }
+      addMsg('bot', html, true);
+      state = 'awaiting_part';
+    } else {
+      addMsg('bot', `<strong>Anna laitteen tunniste</strong><br><br>
+        • <code>21HN</code> — MT-numero<br>
+        • <code>21HN-SC8U00</code> — MT + mallinumero<br>
+        • <code>ThinkPad E15 Gen 5</code> — mallinimi<br><br>
+        <small style="color:var(--muted)">MT-numero löytyy laitteen pohjasta.</small>`, true);
+    }
+
+  } else if (state === 'awaiting_part' || state === 'answering') {
+    state = 'answering';
+    const pp = parsePartInput(text);
+    if (pp.isFRU) addMsg('bot', `<span class="tag type">FRU</span> <code>${pp.fru}</code> — tunnistetaan ja haetaan ohjeet...`, true);
+    else if (pp.display !== text.trim()) addMsg('bot', `<span class="tag type">OSA</span> Tunnistettu: <strong>${pp.display}</strong>`, true);
+    const instructions = await getRepairInstructions(currentType, pp.query, pp.display, pp.isFRU||false, pp.fru||'', window._deviceInfo||{});
+    addMsg('bot', formatResponse(instructions), true);
+    if (pdfUrl) {
+      const pm = instructions.match(/sivu[lt]?\s*(\d+)/i);
+      if (pm) addMsg('bot', `<a href="${pdfUrl}#page=${pm[1]}" target="_blank">📄 Avaa PDF sivulta ${pm[1]}</a>`, true);
+    }
+  }
+}
+
+sendBtn.addEventListener('click', () => handleMessage(input.value));
+input.addEventListener('keydown', e => { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); handleMessage(input.value); } });
+input.addEventListener('input', () => { input.style.height='auto'; input.style.height=Math.min(input.scrollHeight,120)+'px'; });
+
+addMsg('bot', `<div class="step-label">Tervetuloa · Valtuutettu huoltaja</div>
+<strong>Lenovo HMM Agent</strong> — Hardware Maintenance Manual -avustaja<br><br>
+Anna laitteen tunniste aloittaaksesi. Hyväksytyt muodot:<br><br>
+<code>21HN</code> &nbsp;·&nbsp; <code>21HN-SC8U00</code> &nbsp;·&nbsp; <code>21HNSC8U00</code><br>
+<code>ThinkPad E15 Gen 5</code> &nbsp;·&nbsp; <code>IdeaPad 3 Gen 7</code><br><br>
+<small style="color:var(--muted)">MT-numero löytyy laitteen pohjasta tai Win+Pause → Järjestelmätiedot.</small>`, true);
+
+});
+</script>
+</body>
+</html>
